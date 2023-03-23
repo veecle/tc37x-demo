@@ -1,0 +1,9 @@
+[submodule "tc37x-rt"]
+	path = tc37x-rt
+	url = git@github.com:veecle/tc37x-rt.git
+[submodule "tc37x-pac"]
+	path = tc37x-pac
+	url = git@github.com:veecle/tc37x-pac.git
+[submodule "tc37x-hal"]
+	path = tc37x-hal
+	url = git@github.com:veecle/tc37x-hal.git

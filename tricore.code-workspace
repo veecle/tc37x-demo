@@ -1,0 +1,24 @@
+{
+    "settings": {
+        "rust-analyzer.diagnostics.enable": true,
+        "rust-analyzer.procMacro.enable": true,
+        "rust-analyzer.completion.postfix.enable": true,
+        "rust-analyzer.check.command": "clippy",
+        "rust-analyzer.linkedProjects": ["./app/Cargo.toml"],
+		"rust-analyzer.check.allTargets": false,
+        "rust-analyzer.cargo.buildScripts.enable": true,
+        "rust-analyzer.inlayHints.chainingHints.enable": true,
+        "rust-analyzer.inlayHints.parameterHints.enable": true,
+        "rust-analyzer.inlayHints.typeHints.enable": true,
+        "rust-analyzer.server.extraEnv": {
+            "RUST_LOG": "debug",
+			// "RLM_LICENSE": " my license file here "
+        },
+    },
+    "extensions": {
+        "recommendations": [
+            "rust-lang.rust-analyzer",
+            "zixuanwang.linkerscript"
+        ]
+    }
+}

@@ -101,7 +101,7 @@ fn checked_main() -> Result<!, &'static str> {
     // addresses starts from 0x00 and increments in chunk, starting from a base memory
     let mut memory = unsafe { NodeMemoryBuilder::steal_module_mem() };
 
-    can_with_loopback(&can, &mut memory)
+    can_with_loopback(can, &mut memory)
     //can_with_pins(can, &mut memory, &p.PORT_20, &p.PORT_15)
 }
 

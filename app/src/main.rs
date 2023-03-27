@@ -148,7 +148,7 @@ fn can_with_loopback(
             // Data in big-endian to see it :)
             let data = _msg.to_be_bytes();
 
-            if let Some(transmit_buffer) = can_node.acquire_transmit_buffer() {
+            can_node.with_transmit_buffer(|transmit_buffer| {
                 let mut can_frame = CanTxFrame::default();
 
                 can_frame.set_data(&data);
@@ -156,9 +156,7 @@ fn can_with_loopback(
                 transmit_buffer.set_frame(can_frame).send();
 
                 defmt::info!("Frame is now in buffer!");
-            } else {
-                defmt::warn!("nb::WouldBlock (buffer still full)");
-            }
+            });
 
             // Add the ID to the message counter
             _msg = _msg.wrapping_add(id as u64);
@@ -270,7 +268,6 @@ fn can_with_pins(
         }
     }
 }
-
 
 fn main() -> ! {
     let result = checked_main();

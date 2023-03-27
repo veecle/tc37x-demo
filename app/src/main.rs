@@ -29,16 +29,16 @@ use core::time::Duration;
 
 use byteorder::ByteOrder;
 use joystick::JoystickData;
-use tc37x_hal::can::can0::{CanModule0, Available, CanModule0RAM};
+use tc37x_hal::can::can0::{Available, CanModule0, CanModule0RAM};
 use tc37x_hal::can::memory::module_ram::{BufferSize8, NodeMemory, NodeMemoryBuilder};
-use tc37x_hal::can::node::{connection};
+use tc37x_hal::can::node::connection;
 use tc37x_hal::can::timing::{CanBitrate, U32Ext};
 use tc37x_hal::can::{CanID, CanRxFrame, CanTxFrame};
 use tc37x_hal::clocks::config::Clocks;
 use tc37x_hal::clocks::oscillator::config::Oscillator;
 use tc37x_hal::clocks::setup::SetupClocks;
 use tc37x_hal::time::Instant;
-use tc37x_pac::{PORT_20, PORT_15};
+use tc37x_pac::{PORT_15, PORT_20};
 use tc37x_rt::asm_calls::read_cpu_core_id;
 use tc37x_rt::isr::load_interrupt_table;
 use tc37x_rt::util::wait_nop;
@@ -53,6 +53,7 @@ pre_init!(pre_init_fn);
 post_init!(post_init_fn);
 entry!(main);
 
+mod joystick;
 mod led;
 
 /// Copied from hightec (this would belong to nos-tricore runtime)
@@ -100,8 +101,8 @@ fn checked_main() -> Result<!, &'static str> {
     // addresses starts from 0x00 and increments in chunk, starting from a base memory
     let mut memory = unsafe { NodeMemoryBuilder::steal_module_mem() };
 
-    // can_with_loopback(&can, &mut memory, &p.CAN0)
-    can_with_pins(can, &mut memory, &p.PORT_20, &p.PORT_15)
+    can_with_loopback(&can, &mut memory)
+    //can_with_pins(can, &mut memory, &p.PORT_20, &p.PORT_15)
 }
 
 #[allow(unused)]
@@ -149,7 +150,7 @@ fn can_with_loopback(
 
             if let Some(transmit_buffer) = can_node.acquire_transmit_buffer() {
                 let mut can_frame = CanTxFrame::default();
-                
+
                 can_frame.set_data(&data);
                 can_frame.set_id(CanID::Extended(id as u32));
                 transmit_buffer.set_frame(can_frame).send();
@@ -179,38 +180,40 @@ fn can_with_loopback(
     }
 }
 
+#[allow(unused)]
 fn can_with_pins(
     can: CanModule0<Available, Available>,
     memory: &mut NodeMemoryBuilder<'_, CanModule0RAM>,
     port20: &PORT_20,
-    port15: &PORT_15
+    port15: &PORT_15,
 ) -> Result<!, &'static str> {
-
     // Type-state configuration: node won't be usable until initialized
     defmt::info!("Configuring Node<0> as Tx");
-    let bit_rate_joystick_can = CanBitrate::from_frequency(50u32.kbps()).map_err(|_| "unsupported frequency")?;
-    let bit_rate_vesc = CanBitrate::from_frequency(500u32.kbps()).map_err(|_| "unsupported frequency")?;
+    let bit_rate_joystick_can =
+        CanBitrate::from_frequency(50u32.kbps()).map_err(|_| "unsupported frequency")?;
+    let bit_rate_vesc =
+        CanBitrate::from_frequency(50u32.kbps()).map_err(|_| "unsupported frequency")?;
 
-    let (can, joystick_can) = can.node0();
     let tx_memory: NodeMemory<CanTxFrame<BufferSize8>, _> = memory.take_expect(8);
     let rx_memory: NodeMemory<CanRxFrame<BufferSize8>, _> = memory.take_expect(8);
-    let mut joystick_can = joystick_can
-        .set_bitrate(&bit_rate_joystick_can)
+    let (can, vesc_node) = can.node0();
+    let mut vesc_node = vesc_node
+        .set_bitrate(&bit_rate_vesc)
         .set_rx_fifo0(rx_memory)
         .set_pins(connection::Node0Pin::Rxdb, port20)
         .set_tx(tx_memory)
         .finalize();
 
+    let (_, joystick_can) = can.node1();
     let tx_memory: NodeMemory<CanTxFrame<BufferSize8>, _> = memory.take_expect(8);
     let rx_memory: NodeMemory<CanRxFrame<BufferSize8>, _> = memory.take_expect(8);
-    let (_, send_node) = can.node1();
-    let mut send_node = send_node
-        .set_bitrate(&bit_rate_vesc)
+    let mut joystick_can = joystick_can
+        .set_bitrate(&bit_rate_joystick_can)
         .set_rx_fifo0(rx_memory)
         .set_pins(connection::Node1Pin::Rxda, port15)
         .set_tx(tx_memory)
         .finalize();
-    
+
     defmt::info!("Initial setup done!");
     let mut vesc_discard_counter = 0;
     let mut joystick_message_counter = 0;
@@ -220,7 +223,7 @@ fn can_with_pins(
         let current_time = Instant::now();
         if &last_report + Duration::from_secs(1) < current_time {
             defmt::info!("Now: {}, VESC duty={:?}%; discarded status messages on VESC bus cnt={}, total number of received joystick message={}", 
-                current_time, 
+                current_time,
                 vesc_duty * 100.0,
                 vesc_discard_counter,
                 joystick_message_counter
@@ -229,60 +232,45 @@ fn can_with_pins(
         }
         // Empty FIFO
         while let Some(frame) = joystick_can.try_receive_fifo0() {
-            //
-            // Check that the receive frame ID is 0x70
-            //
             if let CanID::Standard(0x70) = frame.get_id() {
                 joystick_message_counter += 1;
-                
-                //
-                // Extract the joystick data via verified try_from: if failure discard the packet
-                //
-                let joystick: JoystickData = frame.data().try_into();
-                if let Ok(joystick) = joystick {
-                    // Slider is u8, so this operation never fails
-                    // Invert slider scale, and scale from 0 to 1.0
-                    let duty = ((255_u8 - joystick.slider) as f32) / 255.0;
-                    // Clamp the value to avoid Jitter
-                    let duty = duty.clamp(0.10, 1.0);
+                let joystick_data: JoystickData = frame.data().try_into().expect("Invalid packet");
+                // Invert slider scale, and scale from 0 to 1.0
+                vesc_duty = ((255 - joystick_data.slider) as f32) / 255f32;
 
-                    //
-
-
-
-
-                    
+                // Clamp to avoid slider jitter
+                if vesc_duty < 0.10 {
+                    vesc_duty = 0.0;
                 }
 
-                // Send joystick data over the network
-                if let Some(transmit_buffer) = send_node.acquire_transmit_buffer() {
+                vesc_node.with_transmit_buffer(|transmit_buffer| {
                     let mut data = [0; 4];
                     byteorder::BigEndian::write_i32(&mut data, (vesc_duty * 100_000.0) as i32);
 
                     let mut can_frame = CanTxFrame::default();
-                    
+
                     can_frame.set_data(&data);
 
                     const MOTOR_ID: u32 = 97;
-                    const PACKET_TYPE: u32 = 0; // 1 = set current
-                    
+                    const PACKET_TYPE: u32 = 0; // 0 = set duty
+
                     can_frame.set_id(CanID::Extended(MOTOR_ID + (PACKET_TYPE << 8)));
-                    
+
                     transmit_buffer.set_frame(can_frame).send();
-                } else {
-                    defmt::warn!("nb::WouldBlock (buffer still full)");
-                }
+                });
+
                 led::BoardLed::Led1.toggle_led();
             } else {
                 defmt::warn!("Invalid frame id {:?}", frame.get_id());
             }
         }
 
-        while send_node.try_receive_fifo0().is_some() {
+        while vesc_node.try_receive_fifo0().is_some() {
             vesc_discard_counter += 1;
         }
     }
 }
+
 
 fn main() -> ! {
     let result = checked_main();

@@ -5,14 +5,14 @@ edition = "2021"
 
 [dependencies]
 # IFX/HighTecs tuff
-tc37x-rt = { path = "../../tc37x-rt" }
-tc37x-hal = { path = "../../tc37x-hal" }
-tc37x-pac = { path = "../../tc37x-pac", features = ["scu", "can0", "src", "stm0", "stm1", "stm2", "port_00", "port_20", "port_15"] }
+tc37x-rt = { path = "../tc37x-rt" }
+tc37x-hal = { path = "../tc37x-hal" }
+tc37x-pac = { path = "../tc37x-pac", features = ["scu", "can0", "src", "stm0", "stm1", "stm2", "port_00", "port_20", "port_15"] }
 
 # Veecle stuff
-joystick = { path = "joystick" }
 nos-tricore = { path = "../nos-tricore" }
 defmt = "0.3.2"
 defmt-rtt = "0.4.0"
+bitreader = { version = "0.3.6", default-features = false }
 byteorder = { version = "1.4.3", default-features = false}
 nb = "1.0"

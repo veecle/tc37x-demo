@@ -1,5 +1,3 @@
-#![no_std]
-
 use bitreader::BitReader;
 use defmt::Format;
 
@@ -8,19 +6,18 @@ use defmt::Format;
 pub struct JoystickData {
     pub x: u16,       // 0 .. 1024
     pub y: u16,       // 0 .. 1024
-    pub twist: u8,   // 0 .. 255
+    pub twist: u8,    // 0 .. 255
     pub hat: u8,      // States: TBD
     pub button_a: u8, // States: TBD
     pub slider: u8,   // States: TBD
     pub button_b: u8, // States: TBD
 }
 
-
 impl TryFrom<&[u8]> for JoystickData {
     type Error = ();
     fn try_from(value: &[u8]) -> Result<Self, ()> {
         if value.len() != 7 {
-            return Err(())
+            return Err(());
         }
         // Process bits
         // This can be likely be done better, but not worth the effort

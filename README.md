@@ -1,6 +1,6 @@
 ## Demo code for CAN over AURIX TC375
 
-This demo provides an initial showcase on how to use Rust on AURIX™. The demo is 100% written in Rust, and provides 
+This demo provides an initial showcase of how to use Rust on AURIX™. The demo is 100% written in Rust and provides 
 1. Board clock configuration and distribution
 2. CAN Driver configuration & basic usage scenarios
 3. Basic stack-traces
@@ -21,8 +21,8 @@ We use [defmt] as our logging framework: by setting the `DEFMT_LOG={TRACE, DEBUG
 #### Example code
 
 The `main.rs` comes with two examples:
-- `can_with_pins`: (**disabled** by default) assumes two connected devices (a joystick and a motor controller) that talks over CAN. This is unlikely to work given the strict setup; however, the code can be modified to accommodate other scenarios.
-- `with_with_loopback`: (**enabled** by default) this makes CAN work in loopback. This runs by default and should give an idea on how sending/receiving work. 
+- `can_with_pins`: (**disabled** by default) assumes two connected devices (a joystick and a motor controller) that talk over CAN. This is unlikely to work given the strict setup; however, the code can be modified to accommodate other scenarios.
+- `with_with_loopback`: (**enabled** by default) this makes CAN work in loopback. This runs by default and should give an idea of how sending/receiving works. 
 
 #### VSCode
 In order to use rust-analyzer in VSCode, the `tricore.core-workspace.RLM_LICENSE` should be updated to point to the license path.

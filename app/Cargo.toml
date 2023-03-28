@@ -2,6 +2,10 @@
 name = "veecle-app"
 version = "0.1.0"
 edition = "2021"
+authors = ["Veeclers"]
+description = "Demo application for Aurix TC375"
+homepage = "https://www.veecle.io"
+license = "Apache-2.0"
 
 [dependencies]
 # IFX/HighTecs tuff

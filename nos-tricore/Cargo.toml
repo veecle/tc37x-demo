@@ -2,6 +2,10 @@
 name = "nos-tricore"
 version = "0.1.0"
 edition = "2021"
+authors = ["Veeclers"]
+description = "Basic runtime for Aurix TC375"
+homepage = "https://www.veecle.io"
+license = "Apache-2.0"
 
 [dependencies]
 critical-section = { version = "1.1.1", features = ["restore-state-bool"] }
